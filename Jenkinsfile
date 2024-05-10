@@ -1,65 +1,36 @@
 pipeline{
-
     agent any
-    tools{
+    tools {
         maven "maven"
     }
-
-    environment{
-           APP_NAME = "spring-docker-cicd"
-           RELEASE_NO= "1.0.0"
-           DOCKER_USER= "javatechie4u"
-           IMAGE_NAME= "${DOCKER_USER}"+"/"+"${APP_NAME}"
-           IMAGE_TAG= "${RELEASE_NO}-${BUILD_NUMBER}"
-    }
-
     stages{
-
         stage("SCM checkout"){
             steps{
                 checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/ssagarwala/jenkins-ci-cd.git']])
             }
         }
-
         stage("Build Process"){
             steps{
                 script{
-                    sh 'mvn clean install'
+                    bat  'mvn clean install'
                 }
             }
         }
-
-        stage("Build Image"){
+        stage("Deploy to Container"){
             steps{
-                script{
-                    sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
-                }
+            deploy adapters: [tomcat9(credentialsId: 'tomcat-pwd', path: '', url: 'http://localhost:8080/')], contextPath: 'jenkinsCiCd', war: '**/*.war'
             }
-        }
-
-        stage("Deploy Image to Hub"){
-            steps{
-                withCredentials([string(credentialsId: 'dp', variable: 'dp')]) {
-                 sh 'docker login -u javatechie4u -p ${dp}'
-                 sh 'docker push ${IMAGE_NAME}:${IMAGE_TAG}'
-                }
-            }
-        }
-
-
-    }
-
-    post{
-        always{
-            emailext attachLog: true,
-            body: ''' <html>
-    <body>
-        <p>Build Status: ${BUILD_STATUS}</p>
-        <p>Build Number: ${BUILD_NUMBER}</p>
-        <p>Check the <a href="${BUILD_URL}">console output</a>.</p>
-    </body>
-</html>''', mimeType: 'text/html', replyTo: 'javatechie.learning@gmail.com', subject: 'Pipeline Status : ${BUILD_NUMBER}', to: 'javatechie.learning@gmail.com'
-
         }
     }
 }
+
+// angent any means it could be container or local machine
+// tools being used make sure the maven name is same as used in  Dashboard-> tools-> scroll very down to seee the Maven used by
+// jenkins
+
+// stages we need to add for now.   
+// poll SCM 
+// build the source
+//deploy the war
+// EMail 
+
